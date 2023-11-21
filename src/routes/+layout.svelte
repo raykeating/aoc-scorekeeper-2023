@@ -43,7 +43,7 @@
 				<p>{profile.full_name}</p>
 				<button on:click={() => (navDropdownIsOpen = !navDropdownIsOpen)} class="relative">
 					<img class="w-6 h-6 rounded-full" src={profile.avatar_url} alt="" />
-					{#if !navDropdownIsOpen}
+					{#if navDropdownIsOpen}
 						<div class="absolute top-8 right-0 px-4 py-2 bg-black border border-zinc-800">
 							<button class="text-sm whitespace-nowrap" on:click={handleSignOut}>
 								Sign out

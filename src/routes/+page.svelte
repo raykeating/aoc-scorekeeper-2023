@@ -1,24 +1,43 @@
 <!-- // src/routes/auth/+page.svelte -->
 <script lang="ts">
 	export let data;
-	let { submissions, supabase } = data;
-	$: ({ submissions, supabase } = data);
+	let { submissions, mySubmissionToday, supabase, session } = data;
+	$: ({ submissions, mySubmissionToday, supabase, session } = data);
 
-	async function checkIfSubmittedToday() {
-		// check submissions for today
-		console.log(submissions);
+	$: todayIsCompleted;
 
-		let { data, error } = await supabase.rpc('get_random_language', {
-            difficulty: "Easy"
-        });
-        
-		if (error) console.error(error);
-		else console.log(data);
+	let todayIsCompleted: boolean = false;
+	if (mySubmissionToday.data && mySubmissionToday.data.length > 0) {
+		todayIsCompleted = mySubmissionToday.data[0].is_completed;
+	} else {
+		todayIsCompleted = false;
 	}
 
-	checkIfSubmittedToday();
+	$: yourLanguage;
+	
+	let yourLanguage: string = '';
+	if (mySubmissionToday.data && mySubmissionToday.data.length > 0) {
+		console.log(mySubmissionToday.data[0])
+		// @ts-ignore
+		yourLanguage = mySubmissionToday.data[0].Language.name;
+	} else {
+		yourLanguage = '';
+	}
 
-	let usingCopilot: string = '';
+	$: todayIsStarted;
+
+	let todayIsStarted: boolean = false;
+	if (mySubmissionToday.data && mySubmissionToday.data.length > 0) {
+		todayIsStarted = true;
+	} else {
+		todayIsStarted = false;
+	}
+
+	console.log(mySubmissionToday);
+
+	console.log(submissions);
+
+	let usingCopilot: string = 'Y';
 
 	async function startChallenge(difficulty: string) {
 		const { data, error } = await supabase.auth.getSession();
@@ -45,7 +64,21 @@
 			})
 		});
 
-		console.log(res);
+		if (!res.ok) {
+			const json = await res.json();
+			console.log(json);
+			alert(json.error);
+		} else {
+			console.log('started challenge');
+			const data = await res.json();
+
+			console.log(data);
+
+			todayIsStarted = true;
+			yourLanguage = data.language.name;
+
+
+		}
 	}
 </script>
 
@@ -61,13 +94,26 @@
 			<input type="text" class="text-black" bind:value={usingCopilot} />
 		</div>
 
-		<form class="flex flex-col gap-1 items-start mt-4">
-			<button on:click={() => startChallenge('easy')}>start challenge (easy)</button>
-			<button on:click={() => startChallenge('medium')}>start challenge (medium)</button>
-			<button on:click={() => startChallenge('hard')}>start challenge (hard)</button>
-		</form>
+		{#if mySubmissionToday.data && mySubmissionToday.data.length > 0 && todayIsCompleted}
+			<div>
+				<p>you have completed today's challenge</p>
+			</div>
+		{:else if mySubmissionToday.data && mySubmissionToday.data.length > 0}
+			<div>
+				<p>you have started today's challenge</p>
+				<p>your language: {yourLanguage}</p>
+			</div>
+		{:else}
+			<div>
+				<p>you have not started today's challenge</p>
+			</div>
+		{/if}
 
-		<button on:click={() => startChallenge('raincheck')}>raincheck</button>
+		<form class="flex flex-col gap-1 items-start mt-4">
+			<button on:click={() => startChallenge('Easy')}>start challenge (easy)</button>
+			<button on:click={() => startChallenge('Medium')}>start challenge (medium)</button>
+			<button on:click={() => startChallenge('Hard')}>start challenge (hard)</button>
+		</form>
 	</div>
 	<div class="w-full"></div>
 </div>
