@@ -23,7 +23,10 @@
 
 	const handleSignIn = async () => {
 		await supabase.auth.signInWithOAuth({
-			provider: 'discord'
+			provider: 'discord',
+			options: {
+				redirectTo: window.location.origin + "/login-success"
+			}
 		});
 	};
 
@@ -35,7 +38,7 @@
 </script>
 
 <div class="min-h-screen bg-black text-white">
-	<nav class="flex justify-between items-center px-4  border-b border-zinc-800">
+	<nav class="flex justify-between items-center px-4 border-b border-zinc-800">
 		<p class="p-4">AOC</p>
 
 		<div class="flex items-center gap-2">
@@ -45,9 +48,7 @@
 					<img class="w-6 h-6 rounded-full" src={profile.avatar_url} alt="" />
 					{#if navDropdownIsOpen}
 						<div class="absolute top-8 right-0 px-4 py-2 bg-black border border-zinc-800">
-							<button class="text-sm whitespace-nowrap" on:click={handleSignOut}>
-								Sign out
-							</button>
+							<button class="text-sm whitespace-nowrap" on:click={handleSignOut}> Sign out </button>
 						</div>
 					{/if}
 				</button>
@@ -56,5 +57,12 @@
 			{/if}
 		</div>
 	</nav>
-	<slot />
+	{#if profile}
+		<slot />
+	{:else}
+		<div class="flex flex-col items-center justify-center h-[90vh] gap-2">
+			<p class="text-2xl">Welcome</p>
+			<button class="px-4 py-2 border border-zinc-800" on:click={handleSignIn}>Sign in</button>
+		</div>
+	{/if}
 </div>

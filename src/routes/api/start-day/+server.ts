@@ -26,13 +26,13 @@ export async function POST({ request, cookies }) {
 	const { usingCopilot, difficulty } = await request.json();
 
 	// fetch the user's submissions so far
-	const { data: submissions, error } = await supabase
+	const { data: submissions } = await supabase
 		.from('Submission')
 		.select('*')
 		.eq('user_id', user.id);
 
 	// if there's a submission for today already, return an error
-	const { data: todaysSubmission, error: todaysSubmissionError } = await supabase
+	const { data: todaysSubmission } = await supabase
 		.from('Submission')
 		.select('*')
 		.eq('user_id', user.id)
@@ -49,7 +49,7 @@ export async function POST({ request, cookies }) {
 	}
 
 	// fetch all the languages which don't have an associated submission yet
-	const { data: languages, error: languagesError } = await supabase
+	const { data: languages } = await supabase
 		.from('Language')
 		.select('*')
 		.eq('difficulty', difficulty)
