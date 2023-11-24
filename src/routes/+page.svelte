@@ -2,13 +2,22 @@
 <script lang="ts">
 	import { startChallenge } from '$lib/startChallenge.js';
 	import formatTime from '$lib/util/formatTime.js';
+	import getLanguageUsesLeft from '$lib/util/getLanguageUsesLeft.js';
 
 	export let data;
 
+	const daysUntilChristmas = Math.ceil(
+		(new Date('2023-12-25').getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+	);
+
+	console.log(daysUntilChristmas);
+
 	console.log(data.todaysSubmission);
 
-	let { todaysSubmission, session, supabase } = data;
-	$: ({ todaysSubmission, session, supabase } = data);
+	let { submissions, languages, todaysSubmission, session, supabase } = data;
+	$: ({ submissions, languages, todaysSubmission, session, supabase } = data);
+
+	console.log(submissions);
 
 	$: elapsed = todaysSubmission
 		? Date.now() - new Date(todaysSubmission.created_at).getTime()
@@ -26,6 +35,8 @@
 	let usingCopilot = 'Y';
 	let githubUrl = '';
 
+	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'scores';
+
 	async function handleStartChallenge(
 		difficulty: 'Easy' | 'Medium' | 'Hard',
 		usingCopilot: string
@@ -36,8 +47,8 @@
 		const { data } = await supabase
 			.from('Submission')
 			.select('*, Language(id, name)')
-			.eq('user_id', session?.user.id || "")
-			.gte('created_at', new Date().toISOString().slice(0, 10))
+			.eq('user_id', session?.user.id || '')
+			.gte('created_at', new Date().toISOString().slice(0, 10));
 
 		console.log(data);
 
@@ -50,24 +61,23 @@
 		// @ts-ignore
 		const action = event.submitter.value;
 
-		console.log(action)
+		console.log(action);
 
-		if (action === "submit") {
-
+		if (action === 'submit') {
 			const form = event.target as HTMLFormElement;
 			const formData = new FormData(form);
 
 			const githubUrl = formData.get('github-url') as string;
 
-			const res = await fetch("/api/submit-solution", {
-				method: "POST",
+			const res = await fetch('/api/submit-solution', {
+				method: 'POST',
 				headers: {
-					"Content-Type": "application/json",
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					skipping: false,
-					githubUrl,
-				}),
+					githubUrl
+				})
 			});
 
 			const json = await res.json();
@@ -75,18 +85,16 @@
 			if (!json.success) {
 				alert(json.error);
 			}
-
-
-		} else if (action === "raincheck") {
-			const res = await fetch("/api/submit-solution", {
-				method: "POST",
+		} else if (action === 'raincheck') {
+			const res = await fetch('/api/submit-solution', {
+				method: 'POST',
 				headers: {
-					"Content-Type": "application/json",
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					skipping: true,
-					githubUrl: "",
-				}),
+					githubUrl: ''
+				})
 			});
 
 			const json = await res.json();
@@ -94,26 +102,35 @@
 			if (!json.success) {
 				alert(json.error);
 			}
-
 		}
 
 		// refetch todays submission
 		const { data } = await supabase
 			.from('Submission')
 			.select('*')
-			.eq('user_id', session?.user.id || "")
-			.gte('created_at', new Date().toISOString().slice(0, 10))
+			.eq('user_id', session?.user.id || '')
+			.gte('created_at', new Date().toISOString().slice(0, 10));
 
 		todaysSubmission = data?.[0];
 	}
 
+	const languageUsageCounts: { easy: number; medium: number; hard: number } = getLanguageUsesLeft(
+		submissions || [], // submissions
+		languages || [] // languages
+	);
+
+	const mySubmissions =
+		submissions?.filter((submission) => submission.user_id === session?.user.id) || [];
 </script>
 
 <div class="flex h-full">
 	<div class="w-full h-full p-16 border-r border-zinc-800 flex flex-col gap-8 items-start">
 		<div>
-			<p>day 13</p>
-			<p>17 days left</p>
+			<p>day {25 - daysUntilChristmas} 🎄</p>
+			<p>{daysUntilChristmas} days left</p>
+			{#if daysUntilChristmas === 0}
+				<p>🎄 Merry Christmas! 🎄</p>
+			{/if}
 		</div>
 
 		{#if todaysSubmission && todaysSubmission.is_completed}
@@ -127,7 +144,14 @@
 			</div>
 			<form on:submit|preventDefault={handleSubmitSolution}>
 				<label for="github-url">Solution URL:</label>
-				<input class="text-black" type="text" name="github-url" id="github-url" required bind:value={githubUrl} />
+				<input
+					class="text-black"
+					type="text"
+					name="github-url"
+					id="github-url"
+					required
+					bind:value={githubUrl}
+				/>
 				<button type="submit" value="submit">submit</button>
 				<button type="submit" value="raincheck">not today</button>
 			</form>
@@ -144,17 +168,85 @@
 			</div>
 
 			<div class="flex flex-col gap-1 items-start mt-4">
-				<button on:click={() => handleStartChallenge('Easy', usingCopilot)}
-					>start challenge (easy)</button
-				>
-				<button on:click={() => handleStartChallenge('Medium', usingCopilot)}
-					>start challenge (medium)</button
-				>
-				<button on:click={() => handleStartChallenge('Hard', usingCopilot)}
-					>start challenge (hard)</button
-				>
+				{#if languageUsageCounts.easy === 0}
+					<p>you have completed all easy challenges</p>
+				{:else}
+					<button on:click={() => handleStartChallenge('Easy', usingCopilot)}
+						>start challenge (easy) - {languageUsageCounts.easy} left</button
+					>
+				{/if}
+
+				{#if languageUsageCounts.medium === 0}
+					<p>you have completed all medium challenges</p>
+				{:else}
+					<button on:click={() => handleStartChallenge('Medium', usingCopilot)}
+						>start challenge (medium) - {languageUsageCounts.medium} left</button
+					>
+				{/if}
+				{#if languageUsageCounts.hard === 0}
+					<p>you have completed all hard challenges</p>
+				{:else}
+					<button on:click={() => handleStartChallenge('Hard', usingCopilot)}
+						>start challenge (hard) - {languageUsageCounts.hard} left</button
+					>
+				{/if}
 			</div>
 		{/if}
 	</div>
-	<div class="w-full"></div>
+	<div class="w-full">
+		<div class="w-full flex p-4 px-8 gap-3 border-b border-zinc-800 text-zinc-400">
+			<button
+				class={selectedTab === 'scores' ? 'text-white underline' : ''}
+				on:click={() => (selectedTab = 'scores')}>Your Scores</button
+			>
+			<button
+				class={selectedTab === 'leaderboard' ? 'text-white underline' : ''}
+				on:click={() => (selectedTab = 'leaderboard')}>Leaderboard</button
+			>
+			<button
+				class={selectedTab === 'languages' ? 'text-white underline' : ''}
+				on:click={() => (selectedTab = 'languages')}>Languages</button
+			>
+			<button
+				class={selectedTab === 'rules' ? 'text-white underline' : ''}
+				on:click={() => (selectedTab = 'rules')}>Rules</button
+			>
+		</div>
+		<!-- tabs -->
+		{#if selectedTab === 'scores'}
+			<div class="p-8">
+				{#if mySubmissions.length === 0}
+					<p>you have not submitted any solutions</p>
+				{:else}
+					{#each mySubmissions as submission}
+						{#if submission.is_completed}
+							<div class="flex flex-col gap-1">
+								<p>
+									Day {new Date(submission.created_at).getDate()} - completed
+								</p>
+								<p>language: {submission.Language.name}</p>
+								<p>completed in: {formatTime(new Date(submission.submitted_at).getTime() - new Date(submission.created_at).getTime())}</p>
+								<p>
+									github url: <a href={submission.github_url} target="_blank"
+										>{submission.github_url}</a
+									>
+								</p>
+							</div>
+						{:else}
+							<div class="flex flex-col gap-1">
+								<p>Day {new Date(submission.created_at).getDate()} - started</p>
+								<p>language: {submission.Language.name}</p>
+							</div>
+						{/if}
+					{/each}
+				{/if}
+			</div>
+		{:else if selectedTab === 'leaderboard'}
+			<div class="p-8">leaderboard</div>
+		{:else if selectedTab === 'languages'}
+			<div class="p-8">languages</div>
+		{:else if selectedTab === 'rules'}
+			<div class="p-8">rules</div>
+		{/if}
+	</div>
 </div>

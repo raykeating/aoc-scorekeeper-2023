@@ -25,12 +25,20 @@ export async function POST({ request, cookies }) {
 
 	const { githubUrl } = await request.json();
 
-	
+	if (!githubUrl)
+		return json(
+			{ success: false, error: 'no github url' },
+			{
+				status: 400,
+				statusText: 'Bad Request'
+			}
+		);
+
 	const { data: todaysSubmission } = await supabase
 		.from('Submission')
 		.select('*')
 		.eq('user_id', user.id)
-		.gte('created_at', new Date().toISOString().slice(0, 10))
+		.gte('created_at', new Date().toISOString().slice(0, 10));
 
 	// if there's a completed submission for today already, return an error
 	if (todaysSubmission?.length && todaysSubmission[0].is_completed) {
