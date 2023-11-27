@@ -3,6 +3,8 @@
 	import { startChallenge } from '$lib/startChallenge.js';
 	import formatTime from '$lib/util/formatTime.js';
 	import getLanguageUsesLeft from '$lib/util/getLanguageUsesLeft.js';
+	import getLeaderboard from '$lib/util/getLeaderboard.js';
+	import type { Database } from '../types/database.js';
 
 	export let data;
 
@@ -10,14 +12,8 @@
 		(new Date('2023-12-25').getTime() - Date.now()) / (1000 * 60 * 60 * 24)
 	);
 
-	console.log(daysUntilChristmas);
-
-	console.log(data.todaysSubmission);
-
 	let { submissions, languages, todaysSubmission, session, supabase } = data;
 	$: ({ submissions, languages, todaysSubmission, session, supabase } = data);
-
-	console.log(submissions);
 
 	$: elapsed = todaysSubmission
 		? Date.now() - new Date(todaysSubmission.created_at).getTime()
@@ -30,10 +26,15 @@
 			: null;
 	}, 1000);
 
-	console.log(todaysSubmission);
-
 	let usingCopilot = 'Y';
 	let githubUrl = '';
+
+	let currentStep: 'started' | 'submitted' | 'not-started' = todaysSubmission
+		? todaysSubmission.is_completed
+			? 'submitted'
+			: 'started'
+		: 'not-started';
+	$: (currentStep = todaysSubmission ? (todaysSubmission.is_completed ? 'submitted' : 'started') : 'not-started');
 
 	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'scores';
 
@@ -41,21 +42,12 @@
 		difficulty: 'Easy' | 'Medium' | 'Hard',
 		usingCopilot: string
 	) {
+		currentStep = 'started';
 		await startChallenge(difficulty, usingCopilot);
-
-		// refetch todays submission
-		const { data } = await supabase
-			.from('Submission')
-			.select('*, Language(id, name)')
-			.eq('user_id', session?.user.id || '')
-			.gte('created_at', new Date().toISOString().slice(0, 10));
-
-		console.log(data);
-
-		todaysSubmission = data?.[0];
 	}
 
 	async function handleSubmitSolution(event: Event) {
+		currentStep = 'submitted';
 		event.preventDefault();
 
 		// @ts-ignore
@@ -68,6 +60,8 @@
 			const formData = new FormData(form);
 
 			const githubUrl = formData.get('github-url') as string;
+			const part1 = formData.get('part-1') as string;
+			const part2 = formData.get('part-2') as string;
 
 			const res = await fetch('/api/submit-solution', {
 				method: 'POST',
@@ -76,24 +70,9 @@
 				},
 				body: JSON.stringify({
 					skipping: false,
-					githubUrl
-				})
-			});
-
-			const json = await res.json();
-
-			if (!json.success) {
-				alert(json.error);
-			}
-		} else if (action === 'raincheck') {
-			const res = await fetch('/api/submit-solution', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					skipping: true,
-					githubUrl: ''
+					githubUrl,
+					part1: part1 === 'on',
+					part2: part2 === 'on'
 				})
 			});
 
@@ -103,24 +82,39 @@
 				alert(json.error);
 			}
 		}
-
-		// refetch todays submission
-		const { data } = await supabase
-			.from('Submission')
-			.select('*')
-			.eq('user_id', session?.user.id || '')
-			.gte('created_at', new Date().toISOString().slice(0, 10));
-
-		todaysSubmission = data?.[0];
 	}
 
-	const languageUsageCounts: { easy: number; medium: number; hard: number } = getLanguageUsesLeft(
+	let languageUsageCounts: { easy: number; medium: number; hard: number } = getLanguageUsesLeft(
 		submissions || [], // submissions
 		languages || [] // languages
 	);
 
-	const mySubmissions =
-		submissions?.filter((submission) => submission.user_id === session?.user.id) || [];
+	$: languageUsageCounts = getLanguageUsesLeft(submissions || [], languages || []);
+
+	// listen for changes to submissions table
+	supabase
+		.channel('Submission')
+		.on('postgres_changes', { event: '*', schema: 'public', table: 'Submission' }, () => {
+			async function refetchSubmissions() {
+				const refetched = await supabase.from('Submission').select('*, Language(name, difficulty)');
+				submissions = refetched.data;
+				if (submissions) {
+					todaysSubmission = submissions.filter((submission) => {
+						const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
+						const today = new Date().toISOString().slice(0, 10);
+						return submissionDate === today && submission.user_id === session?.user.id;
+					})?.[0];
+				}
+			}
+			refetchSubmissions();
+		})
+		.subscribe();
+
+	$: mySubmissions =
+		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
+
+	$: leaderboard = getLeaderboard(submissions, languages);
+
 </script>
 
 <div class="flex h-full">
@@ -133,14 +127,14 @@
 			{/if}
 		</div>
 
-		{#if todaysSubmission && todaysSubmission.is_completed}
+		{#if currentStep === 'submitted'}
 			<div>
-				<p>you have completed today's challenge</p>
+				<p>Nice work! You completed today's challenge!</p>
 			</div>
-		{:else if todaysSubmission && !todaysSubmission.is_completed}
+		{:else if currentStep === 'started'}
 			<div>
 				<p>you have started today's challenge</p>
-				<p>your language: {todaysSubmission.Language.name}</p>
+				<p>your language: {todaysSubmission?.Language?.name || "loading..."}</p>
 			</div>
 			<form on:submit|preventDefault={handleSubmitSolution}>
 				<label for="github-url">Solution URL:</label>
@@ -152,8 +146,18 @@
 					required
 					bind:value={githubUrl}
 				/>
+
+				<!-- check if user completed part 1, 2, or both (checkbox) -->
+				<div class="flex gap-1 items-center">
+					<input type="checkbox" name="part-1" id="part-1" />
+					<label for="part-1">Part 1</label>
+				</div>
+				<div class="flex gap-1 items-center">
+					<input type="checkbox" name="part-2" id="part-2" />
+					<label for="part-2">Part 2</label>
+				</div>
+
 				<button type="submit" value="submit">submit</button>
-				<button type="submit" value="raincheck">not today</button>
 			</form>
 			<!-- timer -->
 			<p>time elapsed: {formatTime(elapsed)}</p>
@@ -171,9 +175,9 @@
 				{#if languageUsageCounts.easy === 0}
 					<p>you have completed all easy challenges</p>
 				{:else}
-					<button on:click={() => handleStartChallenge('Easy', usingCopilot)}
-						>start challenge (easy) - {languageUsageCounts.easy} left</button
-					>
+					<button on:click={() => handleStartChallenge('Easy', usingCopilot)}>
+						start challenge (easy) - {languageUsageCounts.easy} left
+					</button>
 				{/if}
 
 				{#if languageUsageCounts.medium === 0}
@@ -197,7 +201,7 @@
 		<div class="w-full flex p-4 px-8 gap-3 border-b border-zinc-800 text-zinc-400">
 			<button
 				class={selectedTab === 'scores' ? 'text-white underline' : ''}
-				on:click={() => (selectedTab = 'scores')}>Your Scores</button
+				on:click={() => (selectedTab = 'scores')}>Scorecard</button
 			>
 			<button
 				class={selectedTab === 'leaderboard' ? 'text-white underline' : ''}
@@ -219,13 +223,18 @@
 					<p>you have not submitted any solutions</p>
 				{:else}
 					{#each mySubmissions as submission}
-						{#if submission.is_completed}
+						{#if submission.is_completed && submission.submitted_at}
 							<div class="flex flex-col gap-1">
 								<p>
 									Day {new Date(submission.created_at).getDate()} - completed
 								</p>
-								<p>language: {submission.Language.name}</p>
-								<p>completed in: {formatTime(new Date(submission.submitted_at).getTime() - new Date(submission.created_at).getTime())}</p>
+								<p>language: {submission?.Language?.name || ''}</p>
+								<p>
+									completed in: {formatTime(
+										new Date(submission.submitted_at).getTime() -
+											new Date(submission.created_at).getTime()
+									)}
+								</p>
 								<p>
 									github url: <a href={submission.github_url} target="_blank"
 										>{submission.github_url}</a
@@ -235,14 +244,31 @@
 						{:else}
 							<div class="flex flex-col gap-1">
 								<p>Day {new Date(submission.created_at).getDate()} - started</p>
-								<p>language: {submission.Language.name}</p>
+								<p>language: {submission?.Language?.name || ''}</p>
 							</div>
 						{/if}
 					{/each}
 				{/if}
 			</div>
 		{:else if selectedTab === 'leaderboard'}
-			<div class="p-8">leaderboard</div>
+			<div class="p-8">
+				{#each leaderboard || [] as leaderboardEntry}
+					<!-- <div class="flex flex-col gap-1">
+						<p>Day {new Date(submission.created_at).getDate()}</p>
+						<p>language: {submission?.Language?.name || ''}</p>
+						<p>
+							completed in: {formatTime(
+								new Date(submission.submitted_at || '').getTime() -
+									new Date(submission.created_at).getTime()
+							)}
+						</p>
+						<p>
+							github url: <a href={submission.github_url} target="_blank">{submission.github_url}</a
+							>
+						</p>
+					</div> -->
+				{/each}
+			</div>
 		{:else if selectedTab === 'languages'}
 			<div class="p-8">languages</div>
 		{:else if selectedTab === 'rules'}

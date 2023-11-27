@@ -74,7 +74,7 @@ export async function POST({ request, cookies }) {
 		.insert({
 			user_id: user.id,
 			is_using_copilot: usingCopilot,
-			language_id: randomLanguage.id
+			language_id: randomLanguage.id,
 		});
 
 	return json({

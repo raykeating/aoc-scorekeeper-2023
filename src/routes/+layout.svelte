@@ -1,3 +1,7 @@
+<svelte:head>
+    <script src="https://kit.fontawesome.com/2f07fc999b.js" crossorigin="anonymous"></script>
+</svelte:head>
+
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
 	import { onMount } from 'svelte';

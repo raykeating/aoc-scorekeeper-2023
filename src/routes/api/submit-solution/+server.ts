@@ -23,7 +23,7 @@ export async function POST({ request, cookies }) {
 	if (!user)
 		return json({ success: false, error: 'no user' }, { status: 401, statusText: 'Unauthorized' });
 
-	const { githubUrl } = await request.json();
+	const { githubUrl, part1, part2 } = await request.json();
 
 	if (!githubUrl)
 		return json(
@@ -56,7 +56,13 @@ export async function POST({ request, cookies }) {
 	// set the submission to completed
 	await supabase
 		.from('Submission')
-		.update({ is_completed: true, github_url: githubUrl, submitted_at: new Date().toISOString() })
+		.update({
+			is_completed: true,
+			github_url: githubUrl,
+			submitted_at: new Date().toISOString(),
+			part_1_completed: part1,
+			part_2_completed: part2,
+		})
 		.eq('id', todaysSubmissionId || -1);
 
 	return json({

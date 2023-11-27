@@ -4,9 +4,6 @@ import { createSupabaseLoadClient } from '@supabase/auth-helpers-sveltekit'
 import type { Database } from '../types/database'
 
 export const load = async ({ fetch, data, depends }) => {
-
-  console.log(data);
-
   depends('supabase:auth')
 
   const supabase = createSupabaseLoadClient<Database>({
