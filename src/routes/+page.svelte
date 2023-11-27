@@ -114,6 +114,7 @@
 		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 
 	$: leaderboard = getLeaderboard(submissions, languages);
+	console.log("leaderboard", leaderboard);
 
 </script>
 
