@@ -261,9 +261,16 @@
 					<p class="underline">Placement</p>
 					<p class="underline">Total</p>
 
-					{#each value as entry}
+					{#each value as entry, i}
 						<div class="flex flex gap-2">
 							<img src={entry.user.user_metadata.picture} alt="avatar" class="w-10 h-10"/>
+							{#if i === 0}
+								<p class="flex items-center justify-center min-h-min">🥇</p>
+							{:else if i === 1}
+								<p class="flex items-center justify-center min-h-min">🥈</p>
+							{:else if i === 2}
+								<p class="flex items-center justify-center min-h-min">🥉</p>
+							{/if}
 							<p class="flex items-center justify-center min-h-min">{entry.user.user_metadata.name.split("#")[0]}</p>
 						</div>
 
