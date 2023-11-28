@@ -12,8 +12,8 @@
 		(new Date('2023-12-25').getTime() - Date.now()) / (1000 * 60 * 60 * 24)
 	);
 
-	let { submissions, languages, todaysSubmission, session, supabase } = data;
-	$: ({ submissions, languages, todaysSubmission, session, supabase } = data);
+	let { submissions, languages, todaysSubmission, session, users, supabase } = data;
+	$: ({ submissions, languages, todaysSubmission, session, users, supabase } = data);
 
 	$: elapsed = todaysSubmission
 		? Date.now() - new Date(todaysSubmission.created_at).getTime()
@@ -34,7 +34,11 @@
 			? 'submitted'
 			: 'started'
 		: 'not-started';
-	$: (currentStep = todaysSubmission ? (todaysSubmission.is_completed ? 'submitted' : 'started') : 'not-started');
+	$: currentStep = todaysSubmission
+		? todaysSubmission.is_completed
+			? 'submitted'
+			: 'started'
+		: 'not-started';
 
 	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'scores';
 
@@ -113,8 +117,9 @@
 	$: mySubmissions =
 		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 
-	$: leaderboard = getLeaderboard(submissions, languages);
+	$: leaderboard = getLeaderboard(submissions || [], users || []);
 
+	console.log(leaderboard);
 </script>
 
 <div class="flex h-full">
@@ -134,7 +139,7 @@
 		{:else if currentStep === 'started'}
 			<div>
 				<p>you have started today's challenge</p>
-				<p>your language: {todaysSubmission?.Language?.name || "loading..."}</p>
+				<p>your language: {todaysSubmission?.Language?.name || 'loading...'}</p>
 			</div>
 			<form on:submit|preventDefault={handleSubmitSolution}>
 				<label for="github-url">Solution URL:</label>
@@ -253,20 +258,11 @@
 		{:else if selectedTab === 'leaderboard'}
 			<div class="p-8">
 				{#each leaderboard || [] as leaderboardEntry}
-					<!-- <div class="flex flex-col gap-1">
-						<p>Day {new Date(submission.created_at).getDate()}</p>
-						<p>language: {submission?.Language?.name || ''}</p>
-						<p>
-							completed in: {formatTime(
-								new Date(submission.submitted_at || '').getTime() -
-									new Date(submission.created_at).getTime()
-							)}
-						</p>
-						<p>
-							github url: <a href={submission.github_url} target="_blank">{submission.github_url}</a
-							>
-						</p>
-					</div> -->
+					<div class="flex gap-1">
+						<img src={leaderboardEntry.user.profile_image_url} alt="" class="w-5 h-5 rounded-full" />
+						<p>{leaderboardEntry.user.name}</p>
+						<p>score: {leaderboardEntry.score}</p>
+					</div>
 				{/each}
 			</div>
 		{:else if selectedTab === 'languages'}

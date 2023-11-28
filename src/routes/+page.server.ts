@@ -17,6 +17,8 @@ export const load = async ({ locals: { supabase, getSession }, cookies }) => {
 
 	const languages = await supabase.from('Language').select('*');
 
+	const users = await supabase.from('User').select('*');
+
 	if (submissions.data) {
 		todaysSubmission = submissions.data.filter((submission) => {
 			const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
@@ -29,6 +31,7 @@ export const load = async ({ locals: { supabase, getSession }, cookies }) => {
 		todaysSubmission: todaysSubmission?.[0],
 		submissions: submissions.data,
 		languages: languages.data,
-		session: session || null
+		session: session || null,
+		users: users.data
 	};
 };
