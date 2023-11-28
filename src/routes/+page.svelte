@@ -113,9 +113,7 @@
 	$: mySubmissions =
 		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 
-	$: leaderboard = getLeaderboard(submissions, languages);
-	console.log("leaderboard", leaderboard);
-
+	$: leaderboard = getLeaderboard(submissions);
 </script>
 
 <div class="flex h-full">
@@ -253,22 +251,31 @@
 			</div>
 		{:else if selectedTab === 'leaderboard'}
 			<div class="p-8">
-				{#each leaderboard || [] as leaderboardEntry}
-					<!-- <div class="flex flex-col gap-1">
-						<p>Day {new Date(submission.created_at).getDate()}</p>
-						<p>language: {submission?.Language?.name || ''}</p>
-						<p>
-							completed in: {formatTime(
-								new Date(submission.submitted_at || '').getTime() -
-									new Date(submission.created_at).getTime()
-							)}
-						</p>
-						<p>
-							github url: <a href={submission.github_url} target="_blank">{submission.github_url}</a
-							>
-						</p>
-					</div> -->
-				{/each}
+				{#await leaderboard }
+					<p>loading</p>
+				{:then value}
+				<div class="grid grid-cols-5 text-center leaderboard">
+					<p class="underline text-left">User</p>
+					<p class="underline">Part 1</p>
+					<p class="underline">Part 2</p>
+					<p class="underline">Placement</p>
+					<p class="underline">Total</p>
+
+					{#each value as entry}
+						<div class="flex flex gap-2">
+							<img src={entry.user.user_metadata.picture} alt="avatar" class="w-10 h-10"/>
+							<p class="flex items-center justify-center min-h-min">{entry.user.user_metadata.name.split("#")[0]}</p>
+						</div>
+
+						<p class="flex items-center justify-center min-h-min">{entry.score.part1}</p>
+						<p class="flex items-center justify-center min-h-min">{entry.score.part2}</p>
+						<p class="flex items-center justify-center min-h-min">{entry.score.finishTimeBonus}</p>
+						<p class="flex items-center justify-center min-h-min">{entry.score.total}</p>
+					{/each}
+				</div>
+				{:catch error}
+					{error.message}
+				{/await}
 			</div>
 		{:else if selectedTab === 'languages'}
 			<div class="p-8">languages</div>

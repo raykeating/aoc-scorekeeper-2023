@@ -1,139 +1,107 @@
+// scoring works like this:
+// 4 points for completing part 1
+// 2 points for completing part 2
+
+// an additional 3 points is awarded to the fastest time each day
+// an additional 2 points is awarded to the second fastest time each day
+// an additional 1 point is awarded to the third fastest time each day
+
 import { supabase } from '$lib/supabaseClient';
 import type { Database } from '../../types/database';
-import { nowDateTime, createDateTime, sort, fromDatabaseObjects } from '$lib/util/dateTime';
-import type { DateTime } from '../../types/dateTime';
+import DateTimeWrapper from '../../types/DateTimeWrapper';
+import type { Score } from '../../types/general';
+import type { Language, Submission, User } from '../../types/shorthands';
 
 type LeaderboardEntry = {
-	user: {
-		id: string;
-		name: string;
-		profile_image_url: string;
-	};
-	language: {
-		id: number;
-		name: string;
-		difficulty: string;
-	};
-	score: number;
+	user: User;
+	score: Score;
 };
 
-
-function getSubmissionScores(submissions: any[]): Record<number, number> {
+//maps submissions ids to scores given submissions
+function getSubmissionScores(submissions: Submission[]): Record<number, Score> {
 	//convenient date time objects to hold the submission times
-	let submissionDateTimes = sort(fromDatabaseObjects(submissions, 'submitted_at'));
+	let submissionTimes = DateTimeWrapper.createFromDatabaseObjects<Submission>(submissions, 'submitted_at');
+	submissionTimes = DateTimeWrapper.sort(submissionTimes)
 
 	//record to hold the submission scores by id
-	let submissionScores: Record<number, number> = {}
-	submissionDateTimes.forEach((submissionDateTime) => {
-		const submission = submissionDateTime.ref;
-		submissionScores[submission.id] = 0;
+	const submissionScores: Record<number, Score> = {}
+	submissionTimes.forEach((submissionTime) => {
+		const submission = submissionTime.ref;
+		submissionScores[submission.id] = { total: 0, part1: 0, part2: 0, finishTimeBonus: 0 };
 	});
 
 	//store the submissions by day
-	let submissionsByDay: Record<number, DateTime[]> = {}
-	submissionDateTimes.forEach((submissionDateTime) => {
-		const day = submissionDateTime.day;
+	const submissionsByDay: Record<number, DateTimeWrapper<Submission>[]> = {}
+	submissionTimes.forEach((submissionTime) => {
+		const day = submissionTime.day;
 		if (!submissionsByDay[day]) submissionsByDay[day] = [];
-		submissionsByDay[day].push(submissionDateTime);
+		submissionsByDay[day].push(submissionTime);
 	});
 
 	//compute completion scores
-	submissionDateTimes.forEach((submissionDateTime) => {
-		const submission = submissionDateTime.ref;
-		submission.part_1_completed && (submissionScores[submission.id] += 4);
-		submission.part_2_completed && (submissionScores[submission.id] += 2);
+	submissionTimes.forEach((submissionTime) => {
+		const submission = submissionTime.ref;
+		submission.part_1_completed && (submissionScores[submission.id].part1 = 4);
+		submission.part_2_completed && (submissionScores[submission.id].part2 = 2);
 	})
 
 	//compute finish time scores
 	Object.keys(submissionsByDay).forEach((day) => {
-		const fastestSubmissions = sort(submissionsByDay[day]).slice(0, 3);
+		DateTimeWrapper.sort(submissionsByDay[Number(day)])
+			.filter((submission) => submission.ref.is_completed)
+			.slice(0, 3)
+			.forEach((submissionDateTime, index) => {
+				const submission = submissionDateTime.ref;
+				submissionScores[submission.id].finishTimeBonus += 3 - index;
+			});
+	})
 
-		fastestSubmissions.forEach((submissionDateTime, index) => {
-			const submission = submissionDateTime.ref;
-			submissionScores[submission.id] += 3 - index;
-		});
+	//compute total scores
+	Object.keys(submissionScores).forEach((id) => {
+		const score = submissionScores[Number(id)];
+		score.total = score.part1 + score.part2 + score.finishTimeBonus;
 	})
 
 	return submissionScores;
 }
 
+//maps users ids to scores given submissions
+function getUserScores(submissions: Submission[]): Record<string, Score> {
+	const submissionScores = getSubmissionScores(submissions);
+
+	///record to hold the user scores by id
+	const userScores: Record<string, Score> = {}
+
+	//total the scores
+	submissions.forEach((submission) => {
+		const submissionScore = submissionScores[submission.id];
+
+		if (!userScores[submission.user_id as string])
+			userScores[submission.user_id as string] = { total: 0, part1: 0, part2: 0, finishTimeBonus: 0 };
+
+		const userScore = userScores[submission.user_id as string];
+		userScore.part1 += submissionScore.part1;
+		userScore.part2 += submissionScore.part2;
+		userScore.finishTimeBonus += submissionScore.finishTimeBonus;
+		userScore.total += submissionScore.total;
+	})
+
+	return userScores;
+}
+
 export default async function getLeaderboard(
-	submissions: any,
-	languages: any
+	submissions: Submission[],
 ): Promise<LeaderboardEntry[]> {
-	//console.log("submissions", submissions);
-	//console.log("languages", languages);
+	const userResponse = await supabase.from('User').select('*');
+	const users = userResponse.data as User[];
 
-	// scoring works like this:
-	// 4 points for completing part 1
-	// 2 points for completing part 2
+	const userScores = getUserScores(submissions);
 
-	// an additional 3 points is awarded to the fastest time each day
-	// an additional 2 points is awarded to the second fastest time each day
-	// an additional 1 point is awarded to the third fastest time each day
+	const leaderboard: LeaderboardEntry[] = users.map((user) =>
+		({ user, score: userScores[user.id as string] })
+	).sort((a, b) => b.score.total - a.score.total);
 
-	getSubmissionScores(submissions);
-
-	const leaderboard: LeaderboardEntry[] = [];
-
-	const users = await supabase.from('User').select('*');
-	//console.log("users", users);
-
-	// get the fastest submissions for each day (excluding today)
-	// submission time is submitted_at - created_at
-	// then add the additional points to the leaderboard
-	// then sort the leaderboard by score
-	// then return the leaderboard
-	/*
-	function getFastestSubmissions() {
-		const fastestSubmissions: any[] = [];
-
-		const todaysDate = new Date().toISOString().slice(0, 10);
-		console.log(new Date().toISOString())
-
-		submissions.forEach((submission: any) => {
-			const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
-			console.log(new Date(submission.created_at).toISOString())
-			if (submissionDate !== todaysDate) {
-				const submissionTime =
-					new Date(submission.submitted_at).getTime() - new Date(submission.created_at).getTime();
-				fastestSubmissions.push({
-					submission,
-					submissionTime
-				});
-			}
-		});
-
-		fastestSubmissions.sort((a, b) => a.submissionTime - b.submissionTime);
-
-		return fastestSubmissions;
-	}
-
-
-	const fastestSubmissions = getFastestSubmissions();
-		*/
-
-	//console.log("fastestSubmissions", fastestSubmissions);
-
-	// add the additional points to the leaderboard
-	// fastestSubmissions.forEach((submission, index) => {
-	// 	const user = users.data?.find((user) => user.id === submission.submission.user_id);
-	// 	const language = languages.data?.find((language: any) => language.id === submission.submission.language_id);
-
-	// 	if (user && language) {
-	// 		leaderboard.push({
-	// 			user: {
-	// 				id: user.id,
-	// 				name: user.user_metadata?.full_name,
-	// 				profile_image_url: user.user_metadata?.avatar_url
-	// 			}
-	// 			language,
-	// 			score: index === 0 ? 3 : index === 1 ? 2 : index === 2 ? 1 : 0
-	// 		});
-	// 	}
-	// });
-
-	//console.log("leaderboard route", leaderboard)
+	console.log(leaderboard);
 
 	return leaderboard;
 }

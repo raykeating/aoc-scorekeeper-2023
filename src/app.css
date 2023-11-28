@@ -5,3 +5,23 @@
 body {
     background-color: black;
 }
+
+
+.leaderboard > *:nth-child(10n + 1),
+.leaderboard > *:nth-child(10n + 2),
+.leaderboard > *:nth-child(10n + 3),
+.leaderboard > *:nth-child(10n + 4),
+.leaderboard > *:nth-child(10n + 5)
+{
+    background-color: rgb(10, 10, 10);
+}
+
+.leaderboard > *:nth-child(10n + 6),
+.leaderboard > *:nth-child(10n + 7),
+.leaderboard > *:nth-child(10n + 8),
+.leaderboard > *:nth-child(10n + 9),
+.leaderboard > *:nth-child(10n + 10)
+{
+    background-color: rgb(31, 31, 31);
+}
+
