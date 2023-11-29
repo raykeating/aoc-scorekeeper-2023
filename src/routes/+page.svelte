@@ -12,8 +12,8 @@
 		(new Date('2023-12-25').getTime() - Date.now()) / (1000 * 60 * 60 * 24)
 	);
 
-	let { submissions, languages, todaysSubmission, session, supabase } = data;
-	$: ({ submissions, languages, todaysSubmission, session, supabase } = data);
+	let { submissions, languages, todaysSubmission, session, users, supabase } = data;
+	$: ({ submissions, languages, todaysSubmission, session, users, supabase } = data);
 
 	$: elapsed = todaysSubmission
 		? Date.now() - new Date(todaysSubmission.created_at).getTime()
@@ -34,7 +34,11 @@
 			? 'submitted'
 			: 'started'
 		: 'not-started';
-	$: (currentStep = todaysSubmission ? (todaysSubmission.is_completed ? 'submitted' : 'started') : 'not-started');
+	$: currentStep = todaysSubmission
+		? todaysSubmission.is_completed
+			? 'submitted'
+			: 'started'
+		: 'not-started';
 
 	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'scores';
 
@@ -133,7 +137,7 @@
 		{:else if currentStep === 'started'}
 			<div>
 				<p>you have started today's challenge</p>
-				<p>your language: {todaysSubmission?.Language?.name || "loading..."}</p>
+				<p>your language: {todaysSubmission?.Language?.name || 'loading...'}</p>
 			</div>
 			<form on:submit|preventDefault={handleSubmitSolution}>
 				<label for="github-url">Solution URL:</label>
