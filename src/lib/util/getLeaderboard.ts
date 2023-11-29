@@ -27,7 +27,7 @@ function getSubmissionScores(submissions: Submission[]): Record<number, Score> {
 	const submissionScores: Record<number, Score> = {}
 	submissionTimes.forEach((submissionTime) => {
 		const submission = submissionTime.ref;
-		submissionScores[submission.id] = { total: 0, part1: 0, part2: 0, finishTimeBonus: 0 };
+		submissionScores[submission.id] = { total: 0, part_1: 0, part_2: 0, placement: 0 };
 	});
 
 	//store the submissions by day
@@ -41,8 +41,8 @@ function getSubmissionScores(submissions: Submission[]): Record<number, Score> {
 	//compute completion scores
 	submissionTimes.forEach((submissionTime) => {
 		const submission = submissionTime.ref;
-		submission.part_1_completed && (submissionScores[submission.id].part1 = 4);
-		submission.part_2_completed && (submissionScores[submission.id].part2 = 2);
+		submission.part_1_completed && (submissionScores[submission.id].part_1 = 4);
+		submission.part_2_completed && (submissionScores[submission.id].part_2 = 2);
 	})
 
 	//compute finish time scores
@@ -52,14 +52,14 @@ function getSubmissionScores(submissions: Submission[]): Record<number, Score> {
 			.slice(0, 3)
 			.forEach((submissionDateTime, index) => {
 				const submission = submissionDateTime.ref;
-				submissionScores[submission.id].finishTimeBonus += 3 - index;
+				submissionScores[submission.id].placement += 3 - index;
 			});
 	})
 
 	//compute total scores
 	Object.keys(submissionScores).forEach((id) => {
 		const score = submissionScores[Number(id)];
-		score.total = score.part1 + score.part2 + score.finishTimeBonus;
+		score.total = score.part_1 + score.part_2 + score.placement;
 	})
 
 	return submissionScores;
@@ -77,12 +77,12 @@ function getUserScores(submissions: Submission[]): Record<string, Score> {
 		const submissionScore = submissionScores[submission.id];
 
 		if (!userScores[submission.user_id as string])
-			userScores[submission.user_id as string] = { total: 0, part1: 0, part2: 0, finishTimeBonus: 0 };
+			userScores[submission.user_id as string] = { total: 0, part_1: 0, part_2: 0, placement: 0 };
 
 		const userScore = userScores[submission.user_id as string];
-		userScore.part1 += submissionScore.part1;
-		userScore.part2 += submissionScore.part2;
-		userScore.finishTimeBonus += submissionScore.finishTimeBonus;
+		userScore.part_1 += submissionScore.part_1;
+		userScore.part_2 += submissionScore.part_2;
+		userScore.placement += submissionScore.placement;
 		userScore.total += submissionScore.total;
 	})
 
