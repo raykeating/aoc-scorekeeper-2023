@@ -10,11 +10,11 @@ const discordBot = new DiscordBot();
 discordBot.login();
 
 //cron job setup
-/*
-const job = new CronJob('* * * * * *', () => {
-	discordBot.sendMessage('I will send this each second');
+const job = new CronJob('0 0 * * *', () => {
+	//logic for each day
+	discordBot.sendMessage('send at 12am');
 }, null, true, 'America/New_York')
-*/
+
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.supabase = createSupabaseServerClient({
