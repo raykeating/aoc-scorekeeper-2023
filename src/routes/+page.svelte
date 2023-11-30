@@ -278,9 +278,9 @@
 							<p class="flex items-center justify-center min-h-min">{entry.user.user_metadata.name.split("#")[0]}</p>
 						</div>
 
-						<p class="flex items-center justify-center min-h-min">{entry.score.part1}</p>
-						<p class="flex items-center justify-center min-h-min">{entry.score.part2}</p>
-						<p class="flex items-center justify-center min-h-min">{entry.score.finishTimeBonus}</p>
+						<p class="flex items-center justify-center min-h-min">{entry.score.part_1}</p>
+						<p class="flex items-center justify-center min-h-min">{entry.score.part_2}</p>
+						<p class="flex items-center justify-center min-h-min">{entry.score.placement}</p>
 						<p class="flex items-center justify-center min-h-min">{entry.score.total}</p>
 					{/each}
 				</div>
