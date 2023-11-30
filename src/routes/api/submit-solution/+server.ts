@@ -1,8 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServerClient';
-import { computeUserScore } from '$lib/util/scores';
+import { computeUserScore, getUserPlacement } from '$lib/util/scores';
+import getLeaderboard from '$lib/util/getLeaderboard';
 
-export async function POST({ request, cookies }) {
+export async function POST({ request, cookies, locals }) {
 	const supabaseAuthCookie = cookies.get('sb-bbbrnwinzilcycqgvzed-auth-token');
 
 	// just get the first string in the stringified array
@@ -78,6 +79,18 @@ export async function POST({ request, cookies }) {
 	}])
 
 	if (scoreRes.error) return json({ error: scoreRes.error.message }, { status: scoreRes.error.code })
+
+	//discord 
+	const discordBot = locals.discordBot;
+	(async () => {
+		const name = user.user_metadata.full_name;
+		const placement = await getUserPlacement(day, user.id);
+		const placementString = placement === 0 ? "**1st** 🥇" : placement === 1 ? "**2nd** 🥈" : placement === 2 ? "**3rd** 🥉" : `**${placement - 1}th** 😐`;
+		discordBot.sendMessage(
+			`**${name}** has placed ${placementString}\nsee their solution at **${githubUrl}**`);
+		const leaderboard = await getLeaderboard();
+		discordBot.sendMessage(`**Leaderboard**:\n${leaderboard.splice(0, 10).map((entry, i) => `${i + 1}. **${entry.user.user_metadata.full_name}** - **${entry.score.total}**`).join("\n")}`)
+	})()
 
 	return json({
 		success: true

@@ -2,7 +2,18 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { createSupabaseServerClient } from '@supabase/auth-helpers-sveltekit';
 import type { Handle } from '@sveltejs/kit';
+import DiscordBot from './lib/server/discordBot';
+import { CronJob } from 'cron';
 
+//discord bot setup
+const discordBot = new DiscordBot();
+discordBot.login();
+
+//cron job setup
+const job = new CronJob('0 0 * * *', () => {
+	//logic for each day
+	discordBot.sendMessage('send at 12am');
+}, null, true, 'America/New_York')
 
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -11,6 +22,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		supabaseKey: PUBLIC_SUPABASE_ANON_KEY,
 		event
 	});
+
+	event.locals.discordBot = discordBot;
 
 	/**
 	 * a little helper that is written for convenience so that instead
@@ -23,11 +36,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		} = await event.locals.supabase.auth.getSession();
 		return session;
 	};
-
-	//on submit-solution
-	//if (event.url.pathname.startsWith('/api/submit-solution')) {
-		
-	//}
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {

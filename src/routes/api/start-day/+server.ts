@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServerClient';
 
-export async function POST({ request, cookies }) {
+export async function POST({ request, cookies, locals }) {
 	const supabaseAuthCookie = cookies.get('sb-bbbrnwinzilcycqgvzed-auth-token');
 
 	// just get the first string in the stringified array
@@ -65,8 +65,8 @@ export async function POST({ request, cookies }) {
 		);
 	}
 
-    // select a random language from the list of languages
-    const randomLanguage = languages[Math.floor(Math.random() * languages.length)];
+	// select a random language from the list of languages
+	const randomLanguage = languages[Math.floor(Math.random() * languages.length)];
 
 	// insert a new submission
 	await supabase
@@ -77,9 +77,21 @@ export async function POST({ request, cookies }) {
 			language_id: randomLanguage.id,
 		});
 
+	//discord 
+	const discordBot = locals.discordBot;
+	(async () => {
+		const name = user.user_metadata.full_name;
+		const difficultyEmoji = (difficulty == 'Hard' ? '💀' : difficulty === 'Medium' ? '👀' : '🤣');
+		 discordBot.sendMessage(
+		 	`**${name}**` +
+			(usingCopilot === 'y' ? `, along with **copilot** 🤖,` : '') +
+		 	` has started the day with **${randomLanguage.name}** ${difficultyEmoji}` 
+		 );
+	})()
+
 	return json({
 		success: true,
-        language: randomLanguage
+		language: randomLanguage
 	});
 }
 
