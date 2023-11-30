@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServerClient';
+import { computeUserScore } from '$lib/util/scores';
 
 export async function POST({ request, cookies }) {
 	const supabaseAuthCookie = cookies.get('sb-bbbrnwinzilcycqgvzed-auth-token');
@@ -54,7 +55,7 @@ export async function POST({ request, cookies }) {
 	const todaysSubmissionId = todaysSubmission?.[0].id;
 
 	// set the submission to completed
-	await supabase
+	const submissionData = await supabase
 		.from('Submission')
 		.update({
 			is_completed: true,
@@ -63,7 +64,20 @@ export async function POST({ request, cookies }) {
 			part_1_completed: part1,
 			part_2_completed: part2,
 		})
-		.eq('id', todaysSubmissionId || -1);
+		.eq('id', todaysSubmissionId || -1)
+		.select("*")
+
+	//compute the score for the submission
+	const day = (new Date()).getDate()
+	const score = await computeUserScore(day, user.id, submissionData.data[0]);
+
+	//insert score into db
+	const scoreRes = await supabase.from('Score').insert([{
+		user_id: user.id,
+		...score
+	}])
+
+	if (scoreRes.error) return json({ error: scoreRes.error.message }, { status: scoreRes.error.code })
 
 	return json({
 		success: true
