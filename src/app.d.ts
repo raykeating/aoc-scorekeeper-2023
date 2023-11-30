@@ -9,6 +9,7 @@ declare global {
 		interface Locals {
 			supabase: SupabaseClient<Database>;
 			getSession(): Promise<Session | null>;
+			discordBot: any;
 		}
 		interface PageData {
 			session: Session | null;
