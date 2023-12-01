@@ -5,6 +5,7 @@
 	import getLanguageInfo from '$lib/util/getLanguageInfo.js';
 	import getLeaderboard from '$lib/util/getLeaderboard.js';
 	import getColorFromDifficulty from '$lib/util/getColorFromDifficulty.js';
+	import getScorecard from '$lib/util/getScorecard.js';
 
 	export let data;
 
@@ -36,7 +37,7 @@
 		: 'not-started';
 	$: currentStep = currentStep;
 
-	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'languages';
+	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'leaderboard';
 
 	async function handleStartChallenge(
 		difficulty: 'Easy' | 'Medium' | 'Hard',
@@ -112,8 +113,6 @@
 	$: mySubmissions =
 		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 
-	$: leaderboard = getLeaderboard(submissions || []);
-
 	let { usesLeftByDifficulty, usesLeftByLanguage } = getLanguageInfo(
 		submissions || [], // all submissions
 		mySubmissions || [], // submissions
@@ -127,10 +126,13 @@
 
 	console.log(usesLeftByDifficulty);
 	console.log(usesLeftByLanguage);
+	$: leaderboard = getLeaderboard(submissions || []);
+
+	$: scorecard = getScorecard(session?.user.id || '', languages || []);
 </script>
 
 <div class="flex h-full">
-	<div class="w-full h-full p-16 border-r border-zinc-800 flex flex-col gap-8 items-start">
+	<div class="w-full h-[93vh] p-16 border-r border-zinc-800 flex flex-col gap-8 items-start">
 		<div>
 			<p>day {25 - daysUntilChristmas} 🎄</p>
 			<p>{daysUntilChristmas} days left</p>
@@ -212,12 +214,12 @@
 	<div class="w-full">
 		<div class="w-full flex p-4 px-8 gap-3 border-b border-zinc-800 text-zinc-400">
 			<button
-				class={selectedTab === 'scores' ? 'text-white underline' : ''}
-				on:click={() => (selectedTab = 'scores')}>Scorecard</button
-			>
-			<button
 				class={selectedTab === 'leaderboard' ? 'text-white underline' : ''}
 				on:click={() => (selectedTab = 'leaderboard')}>Leaderboard</button
+			>
+			<button
+				class={selectedTab === 'scores' ? 'text-white underline' : ''}
+				on:click={() => (selectedTab = 'scores')}>Scorecard</button
 			>
 			<button
 				class={selectedTab === 'languages' ? 'text-white underline' : ''}
@@ -231,7 +233,7 @@
 		<!-- tabs -->
 		{#if selectedTab === 'scores'}
 			<div class="p-8">
-				{#if mySubmissions.length === 0}
+				<!-- {#if mySubmissions.length === 0}
 					<p>you have not submitted any solutions</p>
 				{:else}
 					{#each mySubmissions as submission}
@@ -260,7 +262,34 @@
 							</div>
 						{/if}
 					{/each}
-				{/if}
+				{/if} -->
+
+				{#await scorecard}
+					<p>loading</p>
+				{:then value}
+					<div class="flex gap-2 font-bold text-lg">
+						<img src={session?.user.user_metadata.picture} alt="avatar" class="w-10 h-10" />
+						<p class="flex items-center justify-center min-h-min">
+							{session?.user.user_metadata.name.split('#')[0]}
+						</p>
+					</div>
+
+					{#each value as scorecardEntry}
+						<div class="flex gap-2">
+							<p>{scorecardEntry.day}</p>
+							<p>/</p>
+							<p>{scorecardEntry.language}</p>
+							<p>/</p>
+							<p>{scorecardEntry.placement}</p>
+							<p>/</p>
+							<p>{scorecardEntry.score}</p>
+							<p>/</p>
+							<a href={scorecardEntry.url}>github</a>
+						</div>
+					{/each}
+				{:catch error}
+					<p>error: {error.message}</p>
+				{/await}
 			</div>
 		{:else if selectedTab === 'leaderboard'}
 			<div class="p-8">
@@ -277,7 +306,7 @@
 						{#each value as entry, i}
 							<div class="flex gap-2">
 								<img
-									src={entry?.user?.user_metadata?.toString() || ''}
+									src={entry?.user?.user_metadata?.picture || ''}
 									alt="avatar"
 									class="w-10 h-10"
 								/>
@@ -289,15 +318,13 @@
 									<p class="flex items-center justify-center min-h-min">🥉</p>
 								{/if}
 								<p class="flex items-center justify-center min-h-min">
-									{entry?.user?.user_metadata?.toString() || ''}
+									{entry?.user?.user_metadata?.full_name || ''}
 								</p>
 							</div>
 
-							<p class="flex items-center justify-center min-h-min">{entry.score.part1}</p>
-							<p class="flex items-center justify-center min-h-min">{entry.score.part2}</p>
-							<p class="flex items-center justify-center min-h-min">
-								{entry.score.finishTimeBonus}
-							</p>
+							<p class="flex items-center justify-center min-h-min">{entry.score.part_1}</p>
+							<p class="flex items-center justify-center min-h-min">{entry.score.part_2}</p>
+							<p class="flex items-center justify-center min-h-min">{entry.score.placement}</p>
 							<p class="flex items-center justify-center min-h-min">{entry.score.total}</p>
 						{/each}
 					</div>
@@ -308,9 +335,10 @@
 		{:else if selectedTab === 'languages'}
 			<div class="p-8 grid grid-cols-3 gap-2">
 				{#each Object.entries(usesLeftByLanguage) as [language, info]}
-					<div class="flex flex-col items-center justify-center bg-zinc-700 py-6" style={
-						`border-bottom: 4px solid ${getColorFromDifficulty(info.difficulty)};`
-					}>
+					<div
+						class="flex flex-col items-center justify-center bg-[rgb(31,31,31)] py-6"
+						style={`border-bottom: 4px solid ${getColorFromDifficulty(info.difficulty)};`}
+					>
 						<p class="flex-1">{language}</p>
 						<p>
 							{info.timesUsed} / {info.maxUses}
@@ -319,7 +347,76 @@
 				{/each}
 			</div>
 		{:else if selectedTab === 'rules'}
-			<div class="p-8">rules</div>
+			<div class="p-8 text-zinc-100">
+				<h1 class="text-2xl font-bold mb-3">Welcome to Advent of Code (fun edition)</h1>
+
+				<h2 class="text-lg font-bold">Challenge Overview:</h2>
+				<ul class="list-disc list-inside">
+					<li>Every day, choose a difficulty: easy, medium, or hard.</li>
+					<li>
+						Based on your selection, you will be assigned a random language from the chosen
+						difficulty pool.
+					</li>
+					<li>If you select "any," you can use any language you prefer.</li>
+					<li>
+						Each medium difficulty language will be used twice, and each hard language will be used
+						once.
+					</li>
+					<li>
+						Six days will use easy languages, 16 days will use medium languages, and three days will
+						use hard languages.
+					</li>
+					<li>Hard tasks will take a significant amount of time, so choose wisely.</li>
+				</ul>
+
+				<h2 class="text-lg font-bold">Scoring:</h2>
+				<ul class="list-disc list-inside">
+					<li>Part 1 submission: 4 points.</li>
+					<li>Part 2 submission: 2 points.</li>
+				</ul>
+
+				<h2 class="text-lg font-bold">Bonus Points:</h2>
+				<ul class="list-disc list-inside">
+					<li>
+						At the end of each day, bonus points are assigned based on the rank for that day,
+						determined by completion time.
+					</li>
+					<li>1st place (fastest time): +3 points.</li>
+					<li>2nd place: +2 points.</li>
+					<li>3rd place: +1 point.</li>
+				</ul>
+
+				<h2 class="text-lg font-bold">Copilot Usage:</h2>
+				<ul class="list-disc list-inside mb-4">
+					<li>Copilot may be used, but you must decide at the start of the challenge.</li>
+					<li>Using Copilot incurs a penalty of -2 points.</li>
+					<li>ChatGPT is not allowed.</li>
+				</ul>
+				<div class="w-full h-[1px] bg-zinc-700"></div>
+				<small class="text-xs italic text-zinc-500"
+					>By participating in the Advent of Code (fun edition), you hereby acknowledge and agree to
+					the following terms and conditions: Advent of Code (fun edition) is not responsible for
+					any loss of sleep, sanity, or productivity that may occur as a result of participation in
+					the Advent of Code (fun edition). Advent of Code (fun edition) is not responsible for any
+					embarrassment that may occur as a result of losing to Raymond Keating and/or Austin
+					Goodman. Side effects may include enhanced problem-solving skills, sleep deprivation, and
+					a newfound appreciation for Raymond Keating's coding abilities. Randomly assigned
+					languages are chosen by an algorithm that may or may care about how much work you have
+					that day. Aditionally, "easy," "medium," and "hard" are subjective terms and do not
+					necessarily reflect the actual difficulty of the challenge. Fun IS mandatory; failure to
+					have fun may result in an increased likelihood of losing to Raymond Keating and/or Austin
+					Goodman. You should back up your scores and submissions, as they may be lost at any time.
+					This app was built in like a week and a half and probably has bugs. Let someone know
+					if/when you find any, but don't be annoying about it. Also, i know it looks a little ugly
+					right now but I'm gonna style it this weekend.
+					<br />
+					Any attempt to copy, steal, or otherwise reproduce this application is encouraged and would
+					boost my stats on
+					<a class="underline" href="https://github.com/raykeating/aoc-scorekeeper-2023">GitHub</a>
+
+					<br />
+				</small>
+			</div>
 		{/if}
 	</div>
 </div>

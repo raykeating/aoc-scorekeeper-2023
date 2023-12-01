@@ -42,7 +42,7 @@
 </script>
 
 <div class="min-h-screen bg-black text-white">
-	<nav class="flex justify-between items-center px-4 border-b border-zinc-800">
+	<nav class="flex justify-between h-[7vh] items-center px-4 border-b border-zinc-800">
 		<p class="p-4">AOC</p>
 
 		<div class="flex items-center gap-2">

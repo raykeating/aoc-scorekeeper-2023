@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServerClient';
+import { computeUserScore, getUserPlacement } from '$lib/util/scores';
+import getLeaderboard from '$lib/util/getLeaderboard';
 
-export async function POST({ request, cookies }) {
+export async function POST({ request, cookies, locals }) {
 	const supabaseAuthCookie = cookies.get('sb-bbbrnwinzilcycqgvzed-auth-token');
 
 	// just get the first string in the stringified array
@@ -54,7 +56,7 @@ export async function POST({ request, cookies }) {
 	const todaysSubmissionId = todaysSubmission?.[0].id;
 
 	// set the submission to completed
-	await supabase
+	const submissionData = await supabase
 		.from('Submission')
 		.update({
 			is_completed: true,
@@ -63,7 +65,32 @@ export async function POST({ request, cookies }) {
 			part_1_completed: part1,
 			part_2_completed: part2,
 		})
-		.eq('id', todaysSubmissionId || -1);
+		.eq('id', todaysSubmissionId || -1)
+		.select("*")
+
+	//compute the score for the submission
+	const day = (new Date()).getDate()
+	const score = await computeUserScore(day, user.id, submissionData.data[0]);
+
+	//insert score into db
+	const scoreRes = await supabase.from('Score').insert([{
+		user_id: user.id,
+		...score
+	}])
+
+	if (scoreRes.error) return json({ error: scoreRes.error.message }, { status: scoreRes.error.code })
+
+	//discord 
+	const discordBot = locals.discordBot;
+	(async () => {
+		const name = user.user_metadata.full_name;
+		const placement = await getUserPlacement(day, user.id);
+		const placementString = placement === 0 ? "**1st** 🥇" : placement === 1 ? "**2nd** 🥈" : placement === 2 ? "**3rd** 🥉" : `**${placement - 1}th** 😐`;
+		discordBot.sendMessage(
+			`**${name}** has placed ${placementString}\nsee their solution at **${githubUrl}**`);
+		const leaderboard = await getLeaderboard();
+		discordBot.sendMessage(`**Leaderboard**:\n${leaderboard.splice(0, 10).map((entry, i) => `${i + 1}. **${entry.user.user_metadata.full_name}** - **${entry.score.total}**`).join("\n")}`)
+	})()
 
 	return json({
 		success: true
