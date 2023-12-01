@@ -99,7 +99,7 @@ export default async function getLeaderboard(
 
 	const leaderboard: LeaderboardEntry[] = users.map((user) =>
 		({ user, score: userScores[user.id as string] })
-	).sort((a, b) => b.score.total - a.score.total);
+	).sort((a, b) => b?.score?.total - a?.score?.total);
 
 	console.log(leaderboard);
 

@@ -2,9 +2,9 @@
 <script lang="ts">
 	import { startChallenge } from '$lib/startChallenge.js';
 	import formatTime from '$lib/util/formatTime.js';
-	import getLanguageUsesLeft from '$lib/util/getLanguageUsesLeft.js';
+	import getLanguageInfo from '$lib/util/getLanguageInfo.js';
 	import getLeaderboard from '$lib/util/getLeaderboard.js';
-	import type { Database } from '../types/database.js';
+	import getColorFromDifficulty from '$lib/util/getColorFromDifficulty.js';
 
 	export let data;
 
@@ -34,13 +34,9 @@
 			? 'submitted'
 			: 'started'
 		: 'not-started';
-	$: currentStep = todaysSubmission
-		? todaysSubmission.is_completed
-			? 'submitted'
-			: 'started'
-		: 'not-started';
+	$: currentStep = currentStep;
 
-	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'scores';
+	let selectedTab: 'scores' | 'leaderboard' | 'languages' | 'rules' = 'languages';
 
 	async function handleStartChallenge(
 		difficulty: 'Easy' | 'Medium' | 'Hard',
@@ -88,13 +84,6 @@
 		}
 	}
 
-	let languageUsageCounts: { easy: number; medium: number; hard: number } = getLanguageUsesLeft(
-		submissions || [], // submissions
-		languages || [] // languages
-	);
-
-	$: languageUsageCounts = getLanguageUsesLeft(submissions || [], languages || []);
-
 	// listen for changes to submissions table
 	supabase
 		.channel('Submission')
@@ -114,10 +103,30 @@
 		})
 		.subscribe();
 
+	console.log(submissions);
+
+	console.log(submissions?.filter((submission: any) => submission.user_id === session?.user.id));
+
+	let mySubmissions =
+		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 	$: mySubmissions =
 		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 
-	$: leaderboard = getLeaderboard(submissions);
+	$: leaderboard = getLeaderboard(submissions || []);
+
+	let { usesLeftByDifficulty, usesLeftByLanguage } = getLanguageInfo(
+		submissions || [], // all submissions
+		mySubmissions || [], // submissions
+		languages || [] // languages
+	);
+	$: ({ usesLeftByDifficulty, usesLeftByLanguage } = getLanguageInfo(
+		submissions || [], // all submissions
+		mySubmissions || [], // submissions
+		languages || [] // languages
+	));
+
+	console.log(usesLeftByDifficulty);
+	console.log(usesLeftByLanguage);
 </script>
 
 <div class="flex h-full">
@@ -175,26 +184,26 @@
 			</div>
 
 			<div class="flex flex-col gap-1 items-start mt-4">
-				{#if languageUsageCounts.easy === 0}
+				{#if usesLeftByDifficulty.easy === 0}
 					<p>you have completed all easy challenges</p>
 				{:else}
 					<button on:click={() => handleStartChallenge('Easy', usingCopilot)}>
-						start challenge (easy) - {languageUsageCounts.easy} left
+						start challenge (easy) - {usesLeftByDifficulty.easy} left
 					</button>
 				{/if}
 
-				{#if languageUsageCounts.medium === 0}
+				{#if usesLeftByDifficulty.medium === 0}
 					<p>you have completed all medium challenges</p>
 				{:else}
 					<button on:click={() => handleStartChallenge('Medium', usingCopilot)}
-						>start challenge (medium) - {languageUsageCounts.medium} left</button
+						>start challenge (medium) - {usesLeftByDifficulty.medium} left</button
 					>
 				{/if}
-				{#if languageUsageCounts.hard === 0}
+				{#if usesLeftByDifficulty.hard === 0}
 					<p>you have completed all hard challenges</p>
 				{:else}
 					<button on:click={() => handleStartChallenge('Hard', usingCopilot)}
-						>start challenge (hard) - {languageUsageCounts.hard} left</button
+						>start challenge (hard) - {usesLeftByDifficulty.hard} left</button
 					>
 				{/if}
 			</div>
@@ -255,41 +264,60 @@
 			</div>
 		{:else if selectedTab === 'leaderboard'}
 			<div class="p-8">
-				{#await leaderboard }
+				{#await leaderboard}
 					<p>loading</p>
 				{:then value}
-				<div class="grid grid-cols-5 text-center leaderboard">
-					<p class="underline text-left">User</p>
-					<p class="underline">Part 1</p>
-					<p class="underline">Part 2</p>
-					<p class="underline">Placement</p>
-					<p class="underline">Total</p>
+					<div class="grid grid-cols-5 text-center leaderboard">
+						<p class="underline text-left">User</p>
+						<p class="underline">Part 1</p>
+						<p class="underline">Part 2</p>
+						<p class="underline">Placement</p>
+						<p class="underline">Total</p>
 
-					{#each value as entry, i}
-						<div class="flex flex gap-2">
-							<img src={entry.user.user_metadata.picture} alt="avatar" class="w-10 h-10"/>
-							{#if i === 0}
-								<p class="flex items-center justify-center min-h-min">🥇</p>
-							{:else if i === 1}
-								<p class="flex items-center justify-center min-h-min">🥈</p>
-							{:else if i === 2}
-								<p class="flex items-center justify-center min-h-min">🥉</p>
-							{/if}
-							<p class="flex items-center justify-center min-h-min">{entry.user.user_metadata.name.split("#")[0]}</p>
-						</div>
+						{#each value as entry, i}
+							<div class="flex gap-2">
+								<img
+									src={entry?.user?.user_metadata?.toString() || ''}
+									alt="avatar"
+									class="w-10 h-10"
+								/>
+								{#if i === 0}
+									<p class="flex items-center justify-center min-h-min">🥇</p>
+								{:else if i === 1}
+									<p class="flex items-center justify-center min-h-min">🥈</p>
+								{:else if i === 2}
+									<p class="flex items-center justify-center min-h-min">🥉</p>
+								{/if}
+								<p class="flex items-center justify-center min-h-min">
+									{entry?.user?.user_metadata?.toString() || ''}
+								</p>
+							</div>
 
-						<p class="flex items-center justify-center min-h-min">{entry.score.part1}</p>
-						<p class="flex items-center justify-center min-h-min">{entry.score.part2}</p>
-						<p class="flex items-center justify-center min-h-min">{entry.score.finishTimeBonus}</p>
-						<p class="flex items-center justify-center min-h-min">{entry.score.total}</p>
-					{/each}
-				</div>
+							<p class="flex items-center justify-center min-h-min">{entry.score.part1}</p>
+							<p class="flex items-center justify-center min-h-min">{entry.score.part2}</p>
+							<p class="flex items-center justify-center min-h-min">
+								{entry.score.finishTimeBonus}
+							</p>
+							<p class="flex items-center justify-center min-h-min">{entry.score.total}</p>
+						{/each}
+					</div>
 				{:catch error}
 					{error.message}
 				{/await}
 			</div>
 		{:else if selectedTab === 'languages'}
-			<div class="p-8">languages</div>
+			<div class="p-8 grid grid-cols-3 gap-2">
+				{#each Object.entries(usesLeftByLanguage) as [language, info]}
+					<div class="flex flex-col items-center justify-center bg-zinc-700 py-6" style={
+						`border-bottom: 4px solid ${getColorFromDifficulty(info.difficulty)};`
+					}>
+						<p class="flex-1">{language}</p>
+						<p>
+							{info.timesUsed} / {info.maxUses}
+						</p>
+					</div>
+				{/each}
+			</div>
 		{:else if selectedTab === 'rules'}
 			<div class="p-8">rules</div>
 		{/if}
