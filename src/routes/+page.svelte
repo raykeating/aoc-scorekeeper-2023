@@ -5,6 +5,7 @@
 	import getLanguageUsesLeft from '$lib/util/getLanguageUsesLeft.js';
 	import getLeaderboard from '$lib/util/getLeaderboard.js';
 	import type { Database } from '../types/database.js';
+	import getScorecard from '$lib/util/getScorecard.js';
 
 	export let data;
 
@@ -118,6 +119,8 @@
 		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 
 	$: leaderboard = getLeaderboard(submissions);
+
+	$: scorecard = getScorecard(session?.user.id, languages)
 </script>
 
 <div class="flex h-full">
@@ -222,7 +225,7 @@
 		<!-- tabs -->
 		{#if selectedTab === 'scores'}
 			<div class="p-8">
-				{#if mySubmissions.length === 0}
+				<!-- {#if mySubmissions.length === 0}
 					<p>you have not submitted any solutions</p>
 				{:else}
 					{#each mySubmissions as submission}
@@ -251,7 +254,33 @@
 							</div>
 						{/if}
 					{/each}
-				{/if}
+				{/if} -->
+
+				{#await scorecard }
+					<p>loading</p>
+				{:then value}
+					<div class="flex gap-2 font-bold text-lg">
+						<img src={session?.user.user_metadata.picture} alt="avatar" class="w-10 h-10"/>
+						<p class="flex items-center justify-center min-h-min">{session?.user.user_metadata.name.split("#")[0]}</p>
+					</div>
+
+					{#each value as scorecardEntry}
+						<div class="flex gap-2">
+							<p>{scorecardEntry.day}</p>
+							<p>/</p>
+							<p>{scorecardEntry.language}</p>
+							<p>/</p>
+							<p>{scorecardEntry.placement}</p>
+							<p>/</p>
+							<p>{scorecardEntry.score}</p>
+							<p>/</p>
+							<a href={scorecardEntry.url}>github</a>
+						</div>
+					{/each}
+				{:catch error}
+					<p>error: {error.message}</p>
+				{/await}
+
 			</div>
 		{:else if selectedTab === 'leaderboard'}
 			<div class="p-8">

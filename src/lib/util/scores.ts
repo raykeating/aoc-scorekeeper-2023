@@ -111,6 +111,11 @@ export async function getUserDailyScores(day: number, userId: string): Promise<T
 	return scoreResponse.data as Tables<"Score">[];
 }
 
+export async function getUserTopDailyScore(day: number, userId: string): Promise<Tables<"Score">> {
+	const scores = await getUserDailyScores(day, userId);
+	return scores[0];
+}
+
 //fetches all of user's scores, ordered by total score
 export async function getUserScores(userId: string): Promise<Tables<"Score">[]> {
 	const scoreResponse = await supabase.from('Score')
