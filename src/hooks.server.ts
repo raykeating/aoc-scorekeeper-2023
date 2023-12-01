@@ -2,7 +2,7 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { createSupabaseServerClient } from '@supabase/auth-helpers-sveltekit';
 import type { Handle } from '@sveltejs/kit';
-import DiscordBot from './lib/server/discordBot';
+import DiscordBot from '$lib/server/DiscordBot';
 import { CronJob } from 'cron';
 
 //discord bot setup
