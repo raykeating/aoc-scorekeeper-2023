@@ -6,7 +6,7 @@
 	import getLeaderboard from '$lib/util/getLeaderboard.js';
 	import getColorFromDifficulty from '$lib/util/getColorFromDifficulty.js';
 	import getScorecard from '$lib/util/getScorecard.js';
-	import localizeDate from "$lib/util/localizeDate.js";
+	import localizeDate from '$lib/util/localizeDate.js';
 
 	export let data;
 
@@ -16,24 +16,6 @@
 
 	let { submissions, languages, todaysSubmission, session, users, supabase } = data;
 	$: ({ submissions, languages, todaysSubmission, session, users, supabase } = data);
-
-	async function getTd() {
-
-		console.log(session?.user.id);
-
-		const { data: td } = await supabase
-			.from('Submission')
-			.select('*')
-			.eq('user_id', session?.user.id || "")
-			.eq('created_at', localizeDate(new Date()))
-
-		console.log(td);
-	}
-
-	getTd()
-	
-
-		
 
 	$: elapsed = todaysSubmission
 		? Date.now() - new Date(todaysSubmission.created_at).getTime()
@@ -62,8 +44,17 @@
 		difficulty: 'Easy' | 'Medium' | 'Hard',
 		usingCopilot: string
 	) {
+		if (usingCopilot.toLowerCase() !== 'y' && usingCopilot.toLowerCase() !== 'n') {
+			alert('are you using copilot? (enter y/n)');
+			return;
+		}
+
 		currentStep = 'started';
-		await startChallenge(difficulty, usingCopilot);
+
+		const { success } = await startChallenge(difficulty, usingCopilot);
+		if (!success) {
+			currentStep = 'not-started';
+		}
 	}
 
 	async function handleSubmitSolution(event: Event) {
@@ -114,7 +105,7 @@
 				if (submissions) {
 					todaysSubmission = submissions.filter((submission) => {
 						const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
-						const today = localizeDate(new Date()).toISOString().slice(0, 10)
+						const today = localizeDate(new Date()).toISOString().slice(0, 10);
 						return submissionDate === today && submission.user_id === session?.user.id;
 					})?.[0];
 				}
