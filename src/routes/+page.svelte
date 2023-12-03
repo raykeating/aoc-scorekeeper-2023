@@ -6,15 +6,34 @@
 	import getLeaderboard from '$lib/util/getLeaderboard.js';
 	import getColorFromDifficulty from '$lib/util/getColorFromDifficulty.js';
 	import getScorecard from '$lib/util/getScorecard.js';
+	import localizeDate from "$lib/util/localizeDate.js";
 
 	export let data;
 
 	const daysUntilChristmas = Math.ceil(
-		(new Date('2023-12-25').getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+		(new Date('2023-12-25').getTime() - localizeDate(new Date()).getTime()) / (1000 * 60 * 60 * 24)
 	);
 
 	let { submissions, languages, todaysSubmission, session, users, supabase } = data;
 	$: ({ submissions, languages, todaysSubmission, session, users, supabase } = data);
+
+	async function getTd() {
+
+		console.log(session?.user.id);
+
+		const { data: td } = await supabase
+			.from('Submission')
+			.select('*')
+			.eq('user_id', session?.user.id || "")
+			.eq('created_at', localizeDate(new Date()))
+
+		console.log(td);
+	}
+
+	getTd()
+	
+
+		
 
 	$: elapsed = todaysSubmission
 		? Date.now() - new Date(todaysSubmission.created_at).getTime()
@@ -27,7 +46,7 @@
 			: null;
 	}, 1000);
 
-	let usingCopilot = 'Y';
+	let usingCopilot = '';
 	let githubUrl = '';
 
 	let currentStep: 'started' | 'submitted' | 'not-started' = todaysSubmission
@@ -95,7 +114,7 @@
 				if (submissions) {
 					todaysSubmission = submissions.filter((submission) => {
 						const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
-						const today = new Date().toISOString().slice(0, 10);
+						const today = localizeDate(new Date()).toISOString().slice(0, 10)
 						return submissionDate === today && submission.user_id === session?.user.id;
 					})?.[0];
 				}
@@ -181,7 +200,7 @@
 			</div>
 
 			<div>
-				<p>Use Copilot?</p>
+				<p>Use Copilot? (Y/N)</p>
 				<input type="text" class="text-black" bind:value={usingCopilot} />
 			</div>
 

@@ -1,4 +1,4 @@
-import type { Database } from '../types/database.js';
+import localizeDate from "$lib/util/localizeDate.js";
 
 export const load = async ({ locals: { supabase, getSession }, cookies }) => {
 	const session = await getSession();
@@ -22,7 +22,7 @@ export const load = async ({ locals: { supabase, getSession }, cookies }) => {
 	if (submissions.data) {
 		todaysSubmission = submissions.data.filter((submission) => {
 			const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
-			const today = new Date().toISOString().slice(0, 10);
+			const today = localizeDate(new Date()).toISOString().slice(0, 10);
 			return submissionDate === today && submission.user_id === session?.user.id;
 		});
 	}
