@@ -21,7 +21,7 @@ export const load = async ({ locals: { supabase, getSession }, cookies }) => {
 
 	if (submissions.data) {
 		todaysSubmission = submissions.data.filter((submission) => {
-			const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
+			const submissionDate = localizeDate(new Date(submission.created_at)).toISOString().slice(0, 10);
 			const today = localizeDate(new Date()).toISOString().slice(0, 10);
 			return submissionDate === today && submission.user_id === session?.user.id;
 		});

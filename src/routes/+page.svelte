@@ -11,7 +11,7 @@
 	export let data;
 
 	const daysUntilChristmas = Math.ceil(
-		(new Date('2023-12-25').getTime() - localizeDate(new Date()).getTime()) / (1000 * 60 * 60 * 24)
+		(localizeDate(new Date('2023-12-25')).getTime() - localizeDate(new Date()).getTime()) / (1000 * 60 * 60 * 24)
 	);
 
 	let { submissions, languages, todaysSubmission, session, users, supabase } = data;
@@ -104,7 +104,7 @@
 				submissions = refetched.data;
 				if (submissions) {
 					todaysSubmission = submissions.filter((submission) => {
-						const submissionDate = new Date(submission.created_at).toISOString().slice(0, 10);
+						const submissionDate = localizeDate(new Date(submission.created_at)).toISOString().slice(0, 10);
 						const today = localizeDate(new Date()).toISOString().slice(0, 10);
 						return submissionDate === today && submission.user_id === session?.user.id;
 					})?.[0];
