@@ -64,8 +64,6 @@
 		// @ts-ignore
 		const action = event.submitter.value;
 
-		console.log(action);
-
 		if (action === 'submit') {
 			const form = event.target as HTMLFormElement;
 			const formData = new FormData(form);
@@ -114,10 +112,6 @@
 		})
 		.subscribe();
 
-	console.log(submissions);
-
-	console.log(submissions?.filter((submission: any) => submission.user_id === session?.user.id));
-
 	let mySubmissions =
 		submissions?.filter((submission: any) => submission.user_id === session?.user.id) || [];
 	$: mySubmissions =
@@ -134,8 +128,6 @@
 		languages || [] // languages
 	));
 
-	console.log(usesLeftByDifficulty);
-	console.log(usesLeftByLanguage);
 	$: leaderboard = getLeaderboard(submissions || []);
 
 	$: scorecard = getScorecard(session?.user.id || '', languages || []);

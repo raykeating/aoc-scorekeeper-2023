@@ -18,8 +18,6 @@ function getLanguageUsesLeftByDifficulty(
 		// @ts-ignore
 		const languageDifficulty = submission.Language.difficulty;
 
-		console.log(languageDifficulty);
-
 		if (languageDifficulty === 'Hard') usesLeft.hard--;
 		if (languageDifficulty === 'Medium') usesLeft.medium--;
 		if (languageDifficulty === 'Easy') usesLeft.easy--;
@@ -49,8 +47,6 @@ function getUsesLeftByLanguage(
 		results[submission.Language.name].timesUsed++;
 	});
 
-	console.log(results);
-
 	return results;
 }
 
@@ -60,7 +56,6 @@ export default function getLanguageInfo(
 	mySubmissions: Database['public']['Tables']['Submission']['Row'][],
 	languages: Database['public']['Tables']['Language']['Row'][]
 ) {
-	console.log(mySubmissions);
 
 	const usesLeftByDifficulty = getLanguageUsesLeftByDifficulty(mySubmissions, languages);
 	const usesLeftByLanguage = getUsesLeftByLanguage(mySubmissions, languages);

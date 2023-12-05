@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServerClient';
+import localizeDate from '$lib/util/localizeDate.js';
 
 export async function POST({ request, cookies, locals }) {
 	const supabaseAuthCookie = cookies.get('sb-bbbrnwinzilcycqgvzed-auth-token');
@@ -31,12 +32,16 @@ export async function POST({ request, cookies, locals }) {
 		.select('*')
 		.eq('user_id', user.id);
 
+	console.log(localizeDate(new Date()).toISOString().slice(0, 10))
+
 	// if there's a submission for today already, return an error
 	const { data: todaysSubmission } = await supabase
 		.from('Submission')
 		.select('*')
 		.eq('user_id', user.id)
-		.gte('created_at', new Date().toISOString().slice(0, 10));
+		.gte('created_at', localizeDate(new Date()).toISOString().slice(0, 10));
+
+	console.log(todaysSubmission);
 
 	if (todaysSubmission?.length) {
 		return json(

@@ -43,6 +43,8 @@ export async function POST({ request, cookies, locals }) {
 		.eq('user_id', user.id)
 		.gte('created_at', new Date().toISOString().slice(0, 10));
 
+	console.log(todaysSubmission);
+
 	// if there's a completed submission for today already, return an error
 	if (todaysSubmission?.length && todaysSubmission[0].is_completed) {
 		return json(
@@ -62,7 +64,7 @@ export async function POST({ request, cookies, locals }) {
 		.update({
 			is_completed: true,
 			github_url: githubUrl,
-			submitted_at: localizeDate(new Date()).toISOString(),
+			submitted_at: new Date().toISOString(),
 			part_1_completed: part1,
 			part_2_completed: part2,
 		})

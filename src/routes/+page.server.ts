@@ -3,8 +3,6 @@ import localizeDate from "$lib/util/localizeDate.js";
 export const load = async ({ locals: { supabase, getSession }, cookies }) => {
 	const session = await getSession();
 
-	console.log(session?.user.id);
-
 	// const todaysSubmission = await supabase
 	// 	.from('Submission')
 	// 	.select('*, Language(name)')
